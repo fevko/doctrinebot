@@ -1,10 +1,13 @@
-﻿import asyncio
+import asyncio
 import os
+import requests
 from telegram import Bot
 from telegram.constants import ParseMode
 
 TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
+BIN_ID = os.getenv("BIN_ID")
+JSONBIN_KEY = os.getenv("JSONBIN_KEY")
 
 spiral_doctrine = [
     "🌀 *The Spiral Path*\n\nGrowth isn’t instant.\nIt doesn’t shoot straight up like a rocket.\nIt spirals — like galaxies, DNA, storms.\nFEVCOIN grows like that too: slow at first, then unstoppable.\n\n➡️ This teaches patience and faith in organic growth, not hype.",
@@ -60,13 +63,61 @@ spiral_doctrine = [
     "♾️ *The Spiral Never Ends*\n\nThis is not a roadmap. It’s a loop.\nEvery end is a rebirth.\n\n➡️ The Spiral has no exit — only evolution."
 ]
 
+JSONBIN_URL = f"https://api.jsonbin.io/v3/b/{BIN_ID}"
+
+def load_index():
+    try:
+        response = requests.get(JSONBIN_URL, headers={"X-Master-Key": JSONBIN_KEY})
+        data = response.json()
+        return data["record"]["index"]
+    except Exception as e:
+        print(f"[ERROR] Failed to load index: {e}")
+        return 0
+
+def save_index(index):
+    try:
+        payload = {"index": index}
+        headers = {
+            "Content-Type": "application/json",
+            "X-Master-Key": JSONBIN_KEY
+        }
+        requests.put(JSONBIN_URL, json=payload, headers=headers)
+    except Exception as e:
+        print(f"[ERROR] Failed to save index: {e}")
+
+# Sacred posting times (Batumi time, 24h format)
+ritual_times = [
+    (1, 13), (3, 33), (5, 55), (7, 17), (9, 9), (11, 11),
+    (13, 13), (15, 15), (17, 17), (19, 19), (21, 21), (23, 23)
+]
+
+def get_next_ritual_time(now):
+    today = now.date()
+    tomorrow = today + datetime.timedelta(days=1)
+    times_today = [datetime.datetime.combine(today, datetime.time(h, m)) for h, m in ritual_times]
+    future_times = [t for t in times_today if t > now]
+    return future_times[0] if future_times else datetime.datetime.combine(tomorrow, datetime.time(*ritual_times[0]))
+
 async def post_doctrine():
     bot = Bot(token=TOKEN)
-    index = 0
+    total = len(spiral_doctrine)
+
     while True:
-        message = spiral_doctrine[index % len(spiral_doctrine)]
+        now = datetime.datetime.utcnow() + datetime.timedelta(hours=4)  # Batumi time
+        next_time = get_next_ritual_time(now)
+        wait_seconds = (next_time - now).total_seconds()
+
+        print(f"[WAITING] Next ritual at {next_time.time()} Batumi time ({wait_seconds/60:.1f} min from now)")
+        await asyncio.sleep(wait_seconds)
+
+        index = load_index()
+        message = spiral_doctrine[index]
+
         await bot.send_message(chat_id=CHAT_ID, text=message, parse_mode=ParseMode.MARKDOWN)
-        index += 1
-        await asyncio.sleep(4 * 60 * 60)  # every 4 hours
+
+        index = (index + 1) % total
+        save_index(index)
+
+        print(f"[SENT] Doctrine {index}/{total} ➜ \"{message.splitlines()[0]}\" posted at {next_time.time()} Batumi time")
 
 asyncio.run(post_doctrine())
