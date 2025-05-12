@@ -104,7 +104,7 @@ async def post_doctrine():
     total = len(spiral_doctrine)
 
     while True:
-        now = datetime.datetime.utcnow() + datetime.timedelta(hours=4)  # Batumi time
+        now = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=4) # Batumi time
         next_time = get_next_ritual_time(now)
         wait_seconds = (next_time - now).total_seconds()
 
