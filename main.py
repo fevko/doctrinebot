@@ -10,7 +10,11 @@ CHAT_ID = os.getenv("CHAT_ID")
 BIN_ID = os.getenv("BIN_ID")
 JSONBIN_KEY = os.getenv("JSONBIN_KEY")
 
-batumi_tz = datetime.timezone(datetime.timedelta(hours=4))
+# Sacred ritual drop times (in UTC)
+ritual_times = [
+    (1, 13), (3, 33), (5, 55), (7, 17), (9, 9), (11, 11),
+    (13, 13), (15, 15), (17, 17), (19, 19), (21, 21), (23, 23)
+]
 
 spiral_doctrine = [
     "🌀 *The Spiral Path*\n\nGrowth isn’t instant.\nIt doesn’t shoot straight up like a rocket.\nIt spirals — like galaxies, DNA, storms.\nFEVCOIN grows like that too: slow at first, then unstoppable.\n\n➡️ This teaches patience and faith in organic growth, not hype.",
@@ -91,20 +95,20 @@ def save_index(index):
 def get_next_ritual_time(now):
     today = now.date()
     tomorrow = today + datetime.timedelta(days=1)
-    times_today = [datetime.datetime.combine(today, datetime.time(h, m), tzinfo=batumi_tz) for h, m in ritual_times]
+    times_today = [datetime.datetime.combine(today, datetime.time(h, m), tzinfo=datetime.timezone.utc) for h, m in ritual_times]
     future_times = [t for t in times_today if t > now]
-    return future_times[0] if future_times else datetime.datetime.combine(tomorrow, datetime.time(*ritual_times[0]), tzinfo=batumi_tz)
+    return future_times[0] if future_times else datetime.datetime.combine(tomorrow, datetime.time(*ritual_times[0]), tzinfo=datetime.timezone.utc)
 
 async def post_doctrine():
     bot = Bot(token=TOKEN)
     total = len(spiral_doctrine)
 
     while True:
-        now = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=4)
+        now = datetime.datetime.now(datetime.timezone.utc)
         next_time = get_next_ritual_time(now)
         wait_seconds = (next_time - now).total_seconds()
 
-        print(f"[WAITING] Next ritual at {next_time.time()} Batumi time ({wait_seconds / 60:.1f} min from now)")
+        print(f"[WAITING] Next ritual at {next_time.time()} UTC ({wait_seconds / 60:.1f} min from now)")
         await asyncio.sleep(max(wait_seconds, 1))
 
         index = load_index()
@@ -115,6 +119,6 @@ async def post_doctrine():
         index = (index + 1) % total
         save_index(index)
 
-        print(f"[SENT] Doctrine {index}/{total} ➜ \"{message.splitlines()[0]}\" posted at {next_time.time()} Batumi time")
+        print(f"[SENT] Doctrine {index}/{total} ➜ \"{message.splitlines()[0]}\" posted at {next_time.time()} UTC")
 
 asyncio.run(post_doctrine())
