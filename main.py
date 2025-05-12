@@ -108,7 +108,10 @@ async def post_doctrine():
         wait_seconds = (next_time - now).total_seconds()
 
         print(f"[WAITING] Next ritual at {next_time.time()} Batumi time ({wait_seconds/60:.1f} min from now)")
-        await asyncio.sleep(wait_seconds)
+
+        await asyncio.sleep(max(wait_seconds, 1))
+        print(f"[DEBUG] Now: {now}, Next: {next_time}, Wait Seconds: {wait_seconds}")
+
 
         index = load_index()
         message = spiral_doctrine[index]
